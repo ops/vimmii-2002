@@ -1,0 +1,208 @@
+; Newplayer - muzak player (no, not related to JCH's Newplayer)
+;
+; Version 2 - the duration based player (as opposed to 16-step player)
+;
+; (c) 2002 Anders Carlsson <anders.carlsson@mds.mdh.se>
+;
+; As colour memory will require lots of extra AND #$0F in the code, the
+; option is not supported in this player version.
+
+;#processor 6502
+
+;SYSTEM eqm PAL
+;MUS eqm $1c00
+
+; zero-page addresses
+;zblock		equ $fb	; +3 bytes if this zp not used
+;ztrack		equ $fd	; +3 bytes if this zp not used
+
+
+; index in music data
+porta		equ MUS
+speed		equ MUS+4
+jump_to		equ MUS+12
+hitrack		equ MUS+16
+lotrack		equ MUS+20
+blist		equ MUS+24
+
+; bit patterns in data
+tend		equ $ff
+bend		equ $ff
+rept		equ $f0
+
+;#seg main
+;#include "../basic.i"
+;#include "../timings.i"
+
+	;basicline $1001, 2000
+	;jsr player_init
+	;setirq 1,0,player_update,TRUE
+	;rts
+
+player_init		; $b1
+	ldx	#3
+	stx	channel
+init2$:	lda	#0
+	sta	$900a,x		; (A) equals 0 == silence the voices
+	sta	trackloc,x
+	sta	repti,x
+	sta	dur,x
+	jsr	track_read
+	dex
+	bpl	init2$
+
+	lda	$900e
+	ora	#7		; medium volume to avoid distortion
+	sta	$900e
+	rts
+
+; parameter in: X = track/channel (0-3)
+; loop until we've set block pointers
+track_read
+#if 1
+	lda	hitrack,x
+	sta	ztrk$+2		;ztrack+1
+	lda	lotrack,x
+	sta	ztrk$+1		;ztrack+0
+tr1$: 	ldy	trackloc,x
+tr2$
+ztrk$	lda	$aaaa,y		;(ztrack),y
+#else
+	lda	hitrack,x
+	sta	ztrack+1
+	lda	lotrack,x
+	sta	ztrack+0
+tr1$ 	ldy	trackloc,x
+tr2$	lda	(ztrack),y
+#endif
+	cmp	#tend
+	bcc	nolop$
+	lda	jump_to,x
+	sta	trackloc,x
+	tay
+	bcs	tr2$	; jump always
+nolop$:	inc	trackloc,x	; won't affect A or C
+	cmp	#rept
+	bcc	norm$
+
+	and	#$0f
+	sta	repti,x		; set repeat factor and branch back
+	bpl	tr1$	; jump always
+
+norm$:	pha
+	lsr
+	lsr
+	lsr
+	lsr
+	sta	transpose,x
+	pla
+	and	#$0f
+	asl
+	tay
+	lda	blist+1,y	;lda	blist+0,y	; different order in .word!
+	sta	block_hi,x
+	lda	blist+0,y	;lda	blist+1,y
+	sta	block_lo,x
+comm:	lda	#0
+	sta	blockloc,x
+	rts
+
+; parameter in: X (channel 0-3)
+; outputs: A (note value)
+block_read
+#if 1
+	lda	block_hi,x
+	sta	zblk$+2		;zblock+1
+	lda	block_lo,x
+	sta	zblk$+1		;zblock+0
+blr2$	ldy	blockloc,x
+zblk$	lda	$aaaa,y		;(zblock),y
+#else
+	lda	block_hi,x
+	sta	zblock+1
+	lda	block_lo,x
+	sta	zblock+0
+blr2$	ldy	blockloc,x
+	lda	(zblock),y
+#endif
+	cmp	#bend
+	bcc	note$
+
+	lda	repti,x
+	beq	br2$
+
+	dec	repti,x
+	jsr	comm		; repeat this block
+	beq	blr2$	; jump always
+
+br2$:	jsr	track_read	; read next block and start playing it
+	beq	block_read	; jump always
+
+note$:	pha
+	lsr
+	lsr
+	lsr
+	lsr
+	lsr
+	tay
+	lda	speed,y
+	sta	dur,x
+	pla
+	and	#$1f
+	clc
+	beq	play_note$	; if quiet
+	adc	transpose,x
+	tay
+	lda	freqtable,y
+play_note$
+	sta	$900a,x
+	inc	blockloc,x
+	rts
+
+
+player_update		; $60 without irqsync etc.
+#if 0
+	irqsync
+#if SYSTEM & PAL
+	ldy #6
+	dey
+	bne *-1
+	bit $24
+#endif
+#endif
+	ldx	channel
+	lda	dur,x
+ 	bne porta_test
+
+	jsr	block_read	; dur=0
+	bcc	irqut		; C will always be cleared
+porta_test
+	cmp	porta,x
+	dec	dur,x
+	bcs	irqut
+	lda	#0
+	sta	$900a,x
+irqut
+	dex
+	bpl	ch_ok$
+	ldx	#3
+ch_ok$:	stx	channel
+	rts		;jmp	$eabf
+
+dur		.byte 0,0,0,0
+transpose	.byte 0,0,0,0
+repti		.byte 0,0,0,0
+trackloc	.byte 0,0,0,0
+blockloc	.byte 0,0,0,0
+block_lo	.byte 0,0,0,0
+block_hi	.byte 0,0,0,0
+
+channel					; freqtable[0] = channel
+freqtable	.byte 0
+		.byte 255,130,137,144,150,156,161,167,172,176,181,185
+  		.byte 189,193,196,199,202,205,208,211,213,216,218,220
+  		.byte 222,224,226,227,229,254
+
+
+
+

@@ -1,0 +1,188 @@
+; Newplayer - muzak player (no, not related to JCH's Newplayer)
+;
+; (c) 2002 Anders Carlsson <anders.carlsson@mds.mdh.se>
+
+#processor 6502
+
+;SYSTEM eqm PAL
+POS eqm 0		; 1 = colour memory, 0 = normal memory
+#if POS == 1
+MUS eqm $9400
+SIZ eqm 32
+#else
+MUS eqm $00	;$1c00
+SIZ eqm 16
+#endif
+
+block_ptr	equ $fc
+track_ptr	equ $fe
+blocks 		equ MUS
+speed		equ MUS+1
+jump_to		equ MUS+2
+jump_at		equ MUS+3
+counter		equ MUS+4
+trackstep	equ MUS+5
+transpose	equ MUS+6
+porta		equ MUS+10
+
+;#seg main
+;#include "../basic.i"
+;#include "../timings.i"
+
+;	basicline $1001, 2000
+;	jsr player_init
+;	setirq 1,0,player_update,TRUE
+;	rts
+
+;#org 5120
+player_init
+	lda	#>blocks
+	sta	block_ptr+1	; fixed value
+	sta	track_ptr+1	; assume tracks are within the same page
+	lda	blocks
+	asl
+	asl
+	asl
+	asl
+#if POS == 1
+	asl
+#endif
+	bcc	pli2$
+	inc	track_ptr+1
+pli2$:	sta	track_ptr
+	lda	$900e
+	ora	#7		; medium volume to avoid distortion
+	sta	$900e
+	ldx	#3
+	stx	counter
+	lda	#0
+	sta	step
+	sta	trackstep
+init2$:	sta	$900a,x		; (A) equals 0 == silence the voices
+	dex
+	bpl	init2$
+	rts
+
+set_blockptr
+	txa			; 0 .. 1 .. 2 .. 3
+#if POS == 1
+	asl			; 0 .. 2 .. 4 .. 6
+#endif
+	sta	tmp
+	lda	trackstep	; 0 .. < 15
+	asl
+	asl
+#if POS == 1
+	asl
+#endif
+	adc	tmp
+	tay			; 0 .. 133
+	lda	(track_ptr),y	; 0 .. 15
+#if POS == 1
+	asl
+	asl
+	asl
+	asl
+	asl
+#else
+	pha
+	and	#$f0
+#endif
+	sta	block_lo,x
+
+#if POS == 1
+	iny
+	lda	(track_ptr),y
+#else
+	pla
+	and	#$0f
+#endif
+	sta	transpose,x
+	ldy	#0		; it will be zero anyway
+	rts
+
+player_update
+;	irqsync
+;#if SYSTEM & PAL
+;	ldy #6
+;	dey
+;	bne *-1
+;	bit $24
+;#endif
+	dec	counter
+	bne	porta_test
+	lda	speed
+	sta	counter
+	ldx	#3
+plyup_loop
+	ldy	step
+	bne	read_note
+	jsr	set_blockptr
+read_note
+	lda	block_lo,x
+	beq	next_chan
+	sta	block_ptr
+	lda	(block_ptr),y	; 00 .. 02
+#if POS == 1
+	asl
+	asl
+	asl
+	asl
+	iny
+	adc	(block_ptr),y	; 00 .. 44
+#endif
+	beq	play_note
+#if POS == 0
+	clc
+#endif
+	adc	transpose,x
+	tay
+	lda	freqtable,y
+play_note
+	sta	$900a,x
+next_chan
+	dex
+	bpl	plyup_loop
+	ldy	step
+	iny
+#if POS == 1
+	iny
+#endif
+	cpy	#SIZ		; aww.. colour RAM won't toggle C after 4 bits
+	bne	next_step
+	ldy	trackstep
+	iny
+	cpy	jump_at
+	bmi	set_trackstep
+	ldy	jump_to
+set_trackstep
+	sty	trackstep
+	ldy	#0
+next_step
+	sty	step
+	beq	irq_out
+porta_test
+	ldx	#3
+pt2	lda	porta,x
+	cmp	counter
+	bmi	no_port
+	lda	#0
+	sta	$900a,x
+no_port
+	dex
+	bpl	pt2
+irq_out
+	jmp	$eb18	;$eabf
+
+block_lo	.byte 0,0,0,0
+step		.byte 0			; > 16
+tmp				; tmp is freqtable[0]
+freqtable	.byte 0
+		.byte 255,130,137,144,150,156,161,167,172,176,181,185
+  		.byte 189,193,196,199,202,205,208,211,213,216,218,220
+  		.byte 222,224,226,227,229,230,232,233,234,235,236,237
+		.byte 239,240,241,242,128,224,254
+
+
+
+

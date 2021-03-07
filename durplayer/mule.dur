@@ -1,0 +1,408 @@
+;#org 7168
+
+;SPD eqm 3					; song speed
+
+;	tracks = 38+15+14+4 = 71 bytes
+;	blocks = 3+9+9+5+5+5+5+7+41+37+27+21+13+13+10+65 = 275 bytes
+;	header = 24 bytes
+;	b-list = 32 bytes
+;		 ---
+;		 402 bytse
+
+#include "../durplayer/songmac-dur.i"
+;#include "../durmac.i"
+
+	portaspeed 1,1,1,2	; portamento & speed bytes
+	.byte 10,6,2,0		; track jump-to:s
+	.byte #>tr1, #>tr2, #>tr3, #>tr4	; trackptrs (high byte)
+	.byte #<tr1, #<tr2, #<tr3, #<tr4	; trackptrs (low byte)
+
+; blocks: 32 bytes
+blocklist:	.word b00,b01,b02,b03,b04,b05,b06,b07
+		.word b08,b09,b10,b11,b12,b13,b14,b15
+
+; 0 1 2 3 2 4 2 3 5 6 7 8 0 9 10
+
+;	38 bytes
+tr1:	rept 4		; 0
+	block 0,0
+	block 3,0	; 1
+	block 4,0
+	block 5,2
+	block 4,5
+	block 3,0
+	block 4,0
+	block 5,2
+	block 4,5
+	block 3,0	; 2
+	block 5,0
+	rept 2		; 3
+	block 6,0
+	block 3,0	; 2
+	block 5,0
+	block 6,0	; 4
+	block 4,5
+	block 3,0	; 2
+	block 5,0
+	rept 2		; 3
+	block 6,0
+	block 3,0	; 5
+	block 5,0
+	block 6,0	; 6
+	block 4,5
+	block 7,5	; 7
+	block 7,3
+	block 7,1
+	block 7,0
+	block 7,5	; 8
+	block 7,3
+	block 7,1
+	block 7,0
+	rept 4		; 0
+	block 0,0
+	block 8,0
+	tend		; jmp 10
+
+;	15 bytes
+tr2:	rept 6		; 0
+	block 0,0
+	block 3,0	; 1
+	block 4,0
+	block 5,2
+	block 4,5
+	rept 8
+	block 0,0
+	block 9,0
+	rept 8
+	block 0,0
+	block 10,0
+	tend		; jmp 8
+
+;	14 bytes
+tr3:	rept 8
+	block 0,0
+	block 11,0
+	block 12,0
+	block 11,0
+	block 13,0
+	block 14,5
+	block 14,3
+	block 14,1
+	block 14,0
+	rept 8
+	block 0,0
+	block 15,0
+	tend		; jmp 2
+
+;	4 bytes
+tr4:	rept 3
+	block 1,0
+	block 2,0
+	tend		; jmp 0
+
+;	3 bytes
+b00:	quiet 8
+	quiet 8
+	bend
+
+;	9 bytes
+b01:	bd 1
+	quiet 1
+	sd 1
+	quiet 1
+	hh 1
+	quiet 1
+	sd 1
+	quiet 1
+	bend
+
+;	9 bytes
+b02:	hh 1
+	quiet 1
+	sd 1
+	quiet 1
+	hh 1
+	quiet 1
+	sd 1
+	quiet 1
+	bend
+
+;	5 bytes
+b03:	C  2, 2		; bass 1 = 3,4, 5tr2, 4tr5
+	C  3, 2
+	E  1, 2
+	E  2, 2
+	bend
+
+;	5 bytes
+b04:	F  1, 2		; second half of 4 & 6 : 4tr5
+	F  2, 2
+	F# 1, 2
+	F# 2, 2
+	bend
+
+;	5 bytes
+b05:	f  1, 2		; bass 2 & 5 = 3,5
+	f  2, 2
+	g  1, 2
+	g  2, 2
+	bend
+
+;	5 bytes
+b06:	A# 1, 2		; bass 3 x2, first half of 4 & 6
+	A# 2, 2
+	G# 1, 2
+	G# 2, 2
+	bend
+
+;	7 bytes
+b07:	g  1, 5		; bass 7 & 8 : tr 5,3,1,0,5,3,1,0
+	quiet 1
+	g  1, 1
+	g  1, 1
+	g  1, 6
+	quiet 2
+	bend
+
+;	41 bytes
+b08:	C  2, 4		; bass 9 - 10
+	E  2, 4
+	G  2, 4
+	C  3, 4
+	G# 1, 4
+	C  2, 4
+	D# 2, 4
+	G# 2, 4
+	A  1, 4
+	C# 2, 4
+	E  2, 4
+	A  2, 4
+	D  2, 4
+	A  1, 4
+	D  2, 4
+	A  2, 4
+	D# 2, 4
+	A# 1, 4
+	D# 2, 4
+	A# 2, 4
+	A# 1, 4
+	D  2, 4
+	F  2, 4
+	A# 2, 4
+	C  2, 2
+	C  3, 2
+	A# 1, 2
+	A# 2, 2
+	G# 1, 2
+	G# 2, 2
+	G  1, 2
+	G  2, 2
+	F  1, 2
+	F  2, 2
+	D# 1, 2
+	D# 2, 2
+	D  1, 2
+	D  2, 2
+	G  1, 2
+	G  2, 2
+	bend
+
+;	37 bytes
+b09:	G  2, 2
+	C  3, 2
+	G  2, 2
+	C  3, 2
+	quiet 2
+	G  2, 1
+	G  2, 1
+	C  3, 2
+	G  2, 2
+	F  2, 2
+	A# 2, 2
+	F  2, 2
+	A# 2, 2
+	quiet 2
+	F  2, 1
+	F  2, 1
+	A# 2, 2
+	F  2, 2
+	D# 2, 2
+	G# 2, 2
+	D# 2, 2
+	G# 2, 2
+	quiet 2
+	D# 2, 1
+	D# 2, 1
+	G# 2, 2
+	D# 2, 2
+	D  2, 2
+	G  2, 2
+	C  3, 2
+	H  2, 2
+	quiet 2
+	H  2, 1
+	H  2, 1
+	G# 2, 2
+	G  2, 2
+	bend
+
+;	27 bytes
+b10:	quiet 4
+	g  2, 4
+	E  2, 8
+	quiet 4
+	D# 2, 4
+	c  3, 8
+	quiet 4
+	E  2, 4
+	c# 3, 8
+	quiet 4
+	a  2, 4
+	F  2, 8
+	quiet 4
+	a# 2, 4
+	G  2, 8
+	quiet 4
+	F  2, 4
+	d  3, 8
+	D# 3, 4
+	D  3, 4
+	g# 2, 4
+	G  2, 4
+	A  2, 4
+	G  2, 4
+	f# 2, 4
+	D  2, 4
+	bend
+
+;	21 bytes
+b11:	g  1, 2	; 2+3
+	G  1, 1
+	G  1, 1
+	C  2, 4
+	quiet 1
+	G  1, 2
+	C  2, 1
+	E  2, 1
+	D  2, 1
+	C  2, 2
+	A# 1, 2
+	A# 1, 1
+	A# 1, 1
+	F  2, 4
+	quiet 1
+	A# 1, 2
+	D  2, 1
+	F  2, 1
+	D# 2, 1
+	D  2, 2
+	bend
+
+;	13 bytes
+b12:	g  1, 2	; 2+4
+	G  1, 1
+	G  1, 1
+	C  2, 4
+	quiet 1
+	G  1, 2
+	C  2, 1
+	E  2, 1
+	D  2, 1
+	C  2, 2
+	A# 1, 8
+	quiet 8
+	bend
+
+;	13 bytes
+b13:	C  2, 2	; 5+6
+	C  2, 1
+	C  2, 1
+	G  2, 4
+	quiet 1
+	C  2, 2
+	E  2, 1
+	G  2, 1
+	F  2, 1
+	E  2, 2
+	D  2, 8
+	quiet 8
+	bend
+
+;	10 bytes
+b14:	G  2, 2		; 7 = block 14t5, 14t3, 14t1, 14t0
+	D  2, 2
+	G  2, 2
+	D  2, 2
+	quiet 2
+	D  2, 1
+	D  2, 1
+	G  2, 2
+	D  2, 2
+	bend
+
+;	65 bytes
+b15:	C  2, 2
+	G  1, 2
+	C  2, 2
+	E  2, 2
+	G  2, 2
+	F  2, 2
+	E  2, 2
+	D  2, 2
+	C  2, 2
+	G# 1, 2
+	C  2, 2
+	D# 2, 2
+	G  2, 2
+	F  2, 2
+	D# 2, 2
+	D  2, 2
+	C# 2, 2
+	A  1, 2
+	C# 2, 2
+	E  2, 2
+	A  2, 2
+	G  2, 2
+	F  2, 2
+	E  2, 2
+	D  2, 2
+	A  1, 2
+	D  2, 2
+	F  2, 2
+	A  2, 2
+	G  2, 2
+	F  2, 2
+	E  2, 2
+	D# 2, 2
+	A# 1, 2
+	D# 2, 2
+	G  2, 2
+	A# 2, 2
+	G# 2, 2
+	G  2, 2
+	F  2, 2
+	D  2, 2
+	A# 1, 2
+	D  2, 2
+	F  2, 2
+	A# 2, 2
+	G# 2, 2
+	G  2, 2
+	F  2, 2
+	G  2, 2
+	D# 2, 2
+	F  2, 2
+	D  2, 2
+	D# 2, 2
+	C  2, 2
+	D  2, 2
+	H  1, 2
+	C  2, 2
+	A  1, 2
+	A# 1, 2
+	G  1, 2
+	A  1, 2
+	F# 1, 2
+	H  1, 2
+	G  1, 2
+	bend

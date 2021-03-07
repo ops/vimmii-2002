@@ -1,0 +1,238 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2//EN">
+<html><head><title>VICI ITERUM MM</title>
+<link rev=made href="mailto:a1bert@iki.fi">
+<link rel=parent href="../index.html">
+</head>
+ 
+<BODY TEXT="#000000" BGCOLOR="#CCCCCC" LINK="#0000FF" VLINK="#1111AA" ALINK="#6666CC" BACKGROUND="../../images/back.gif">
+Other C64-related stuff -&gt; <A HREF="http://www.iki.fi/a1bert/Dev/">
+	http://www.iki.fi/a1bert/Dev/</A><BR>
+<UL>
+<LI> Marko Mäkelä's <A HREF="http://www.hut.fi/Misc/cbm/vic20-demos.html">VIC20 demo page</A>
+<LI> FUNET's <A HREF="http://www.funet.fi/pub/cbm/vic20/">VIC20 demo archive</A>
+</UL>
+<HR>
+
+<H2>VIMMII - Vici Iterum MMII</H2>
+
+The increasing amount of VIC20 demos for the unexpanded machine prompted
+Aleksi Eeben to collect them together in an unexpanded VIC20 demo
+collection. He also asked me if I had anything to release, perhaps I could
+convert some of the
+<A HREF="http://www.iki.fi/a1bert/Pu-239/vimm/">VIMM</A>
+parts to run in the unexpanded machine.
+ <P>
+It took me a while to convert the DYCP part from VIMM, and again I
+contacted Anders Carlsson for the music. He didn't disappoint me, and
+produced a very small music player (track player) with a test music and a
+little larger music player (duration player) with some tunes.
+ <P>
+I was talking about color splits with Aleksi, so I also demonstrated how to
+get a lot of independent colors on screen with a routine, which later became
+the second routine for the unexpanded demo collection, called 19-split.
+ <P>
+I continued converting the VIMM parts, and used all of my skills to fit
+everything into the 5.5kB of RAM (color memory nybbles included) available.
+Fortunately I always found some way to implement the effects or memory
+management better than in the so-called original versions. Of course sometimes
+sacrifices had to be made.
+ <P>
+The following chapters goes throught the parts in order, talks about the
+general idea, code specifics, memory layout, how memory was saved, joystick
+control and other hidden bonus features, in addition to how the part actually
+performs and looks like.
+ <P>
+Note that only PAL VIC20 is currently supported.
+ <P>
+
+
+<H3>VIMMII.PRG</H3>
+
+The first part does not have anything much to do, really. It performs a very
+simple fadeout effect, which turns the screen black and off. In addition,
+the loader routine is installed to the drive and to the computer memory
+at location $31a-$3e3 so that it can be used by the following parts without
+the need of reloading it each time. Page 3 is selected because zero-page and
+stack, possibly also page 2 are used by the pucrunch decompressor.
+ <P>
+This part also starts the music for the first actual part and plays the music
+while the part is loaded. I first had the next part in the same file,
+but decided that the smaller the first part is the better.
+ <P>
+
+<H3>3k-vimmii</H3>
+
+This part is a 3x2 16-line character font upscroller. The font originally took
+3072 bytes so I had to do something to crunch it or there would not be any
+space for code, not to mention music, after the font and the video matrix is
+in place. I used a really simple dictionary compression that is also used by
+big font designer programs in C64: identical 16-byte chunks in the font data
+are left out and a mapping from the character code to the font is used when
+writing to video matrix. I edited the font a little to make this character
+packing more effective. After this the packed font takes 2032 bytes and the
+mapping table 180 bytes. That's savings enough to fit everything else in,
+so I stopped there.
+ <P>
+
+<H3>3k-vicpic</H3>
+
+Vicpic displays a picture of resolution 100(w)x160(h). The format is in
+general the same as in the previous
+<A HREF="http://www.iki.fi/a1bert/Dev/vicpic/">vicpic</A> routine.
+However, some sacrifices had to be made:
+<UL>
+<LI> no color bars on the sides, above, or below the picture
+<LI> color memory resolution is 25(w)x10(h), saves 256 bytes + 256 nybbles
+<LI> no "ALBERT" logo below the picture, saves 96 bytes
+</UL>
+In addition to filling every possible location with code, the multicolor
+colors for each picture line are saved as nybbles to the color memory and
+combined in the display code. Each picture is divided into two files so that
+the colors and graphics can be loaded directly to the right memory areas.
+ <P>
+The picture display is turned off while a new picture is being loaded.
+Pictures are loaded in order and when no more pictures are found, the
+next part is loaded. VIMMII contains 10 pictures.
+ <P>
+
+<H3>3k-dycpi</H3>
+
+a.k.a dycp unexpanded is the most traditional part. Nothing really special
+here, except that I had to leave out double-buffering to conserve memory.
+This also simplified the code a bit.
+ <P>
+The scrolling and color-changing border bars were added for release in the
+unexpanded demo collection. Before this addition I considered dropping
+this part completely from VIMMII, but now it is cool enough :-)
+ <P>
+
+
+<H3>3k-plasma</H3>
+
+A new implementation made the plasma look a lot better. We'll start with
+some background stuff.
+ <P>
+The VIMM part faked 8-line characters by having three 24-character patterns.
+One set has both halves the same, while the others have lighter and darker
+bottom halves. Character and border colors can be only from 0 to 7. Two sets
+of patterns are needed to switch colors so that character and border colors
+are always from 0 to 7, whatever colors are on-screen. The VIMM way thus
+needed 2304 bytes for the character patterns, but I found a better way.
+The new way only needs three 32-character patterns, 1536 bytes.
+ <P>
+The major change is that the old version used a fixed map to which a running
+offset was added to cycle the colors. The size of the map was 1044 bytes.
+Another map was activated while the next part was loaded. I decided to use
+a 'real' plasma, which did not need a full map. A sine value is calculated
+for each row and column, each location value is the sum of the row and column
+values. The frequency and offset of row and columns sines are varied to
+morph the display. No map is needed, and the sine table only takes 256 bytes.
+ <P>
+The scroller is implemented by clearing the multicolor bit in the color
+memory in the right places. Because the plasma routine always initializes
+the double-buffered color memory, the routine doesn't do actual scrolling,
+but plots the pixels anew every frame. Scrolling up emulates 8-line
+characters by moving the screen start location and only really scrolling
+every second frame. The plasma row sine calculation is properly compensated
+so that the plasma display does not jump around. The font is generated from
+the ROM font by logically oring with a right-shifted version.
+ <P>
+The scroller actually demonstrates a dual-color plasma.
+ <P>
+
+
+
+<H3>3k-split</H3>
+
+a.k.a 19-split came into being from some discussions with Aleksi Eeben.
+He and Britelite had a little competition about who could make the most
+color splits so I demonstrated an easy way to have two splits in 8 cycles
+and mentioned how you can have 21 splits total (two splits each 6 cycles)
+if you only have enough memory. Aleksi urged me to make it happen, and
+I did a part which had 18 unique background splits with one split rotating
+on the foreground.
+ <P>
+The implementation isn't magic, of course. It is simply 16 lines worth of
+<TT>lda #0</TT> and <TT>sta $900f</TT> pairs with some other instructions
+thrown in, and each <TT>lda</TT> updated each frame with the right colors.
+ <P>
+
+
+<H3>3k-shekki</H3>
+
+Overlapping chessboards with a wave effect is the part that is most closely
+just copied from VIMM. The scroller belov and a graphics line above are
+left out, otherwise the code is only slightly changed.
+
+
+<H3>3k-crediz</H3>
+
+The credits part in VIMM had two overlapping scrolls, one font for each,
+totalling 6kB. I had already made an improved version of the horizontal
+scroller, omitting the vertical scroller completely. However, even that
+improved version used very much too much memory: 3kB for font, two 896-byte
+buffers and the same amount for actual display area, totalling 5.6kB.
+And that is already over the 5kB limit, without any space reserved for
+code, music, video matrix, and other data tables that you end up needing,
+which made me a little skeptical, but also quite excited.
+ <P>
+The display area was filled from the two source buffers, that contained
+the characters currently on-screen. Different effects are made by transforming
+the data a bit when copying it to the display area. Two buffers were needed
+for quarter-character scrolling speed, because horizontal scrolling precision
+is only one cycle, i.e. half a character. Data in the other buffer is
+one multicolor pixel rotated compared to the first buffer. This slow
+scrolling speed was the first feature to remove -- the scroll speed can
+easily be allowed to be twice as fast, because quarter of a character per
+frame was actually too slow anyway.
+ <P>
+The source buffers are handled like ring buffers, i.e. when a new column
+of a character appears, only that column must be printed to the buffer,
+the whole buffer does not need to be scrolled. When copying to display area,
+only the source pointers need to be scrolled so that the target data
+is moved by one column while the source data remains the same. This
+also made it easy to use two buffers, because the same copy routine
+could be used, just the source pointers were changed to point to the
+right source buffer.
+ <P>
+Actually, we don't even need to change the pointers at all, but scroll
+the video matrix contents instead. At first the columns corresponds to
+character codes 0/1..54/55 (two rows, 28 columns). When scrolling new data
+is copied to charactes 0 and 1, and the video matrix columns are set
+to 2/3..54/55,0/1.
+ <P>
+But the pointers can be set to point to the font itself instead of the
+source buffer (there is only one now, because we eliminated the shifted one),
+eliminating the use of a temporary graphics buffer completely.
+Now we only have the 3kB font and the 896-byte graphics display area,
+and the pointers have the information about which column of which character
+corresponds to which column of display data.
+ <P>
+This is much better than the original, but still too much. The copying
+routine requires that each source 'slice' is consequtive 32 bytes and the
+effects assume that first line of the font is empty. The character packing
+that is used in the 3k-vimmii part can be applied here, the unit is simply
+32 bytes instead of 16 bytes, i.e. only identical columns are removed.
+To save enough space I had to edit the font more dramatically, I even
+left out <TT>WXZ</TT> that were not used in the scrolltext. The result
+is 1536 bytes for the font, 84 bytes for the mapping table.
+ <P>
+The improved scroller allowed two effects and no-effect on-screen
+simultaneously. Each character (or in fact each column of a character)
+could select any of these. This required a 120-byte table and the effect
+code was a little more complicated than necessary. One effect (or no effect)
+for the whole display only needs one 40-byte table and simplified effect
+code. Also, I had to drop some effects. Two of the remaining ones use
+the same data tables and the third leaves the table to 'normal' state
+after finishing.
+ <P>
+Some of the tables are located in color memory (just remember to clear the
+top nybble), and the loader is not used anymore, so also that 200 bytes is
+free for grabs. Sprinkled on top with Anders Carlsson's very tiny trackplayer
+and tune ($90 for music data, $d0 for player) the part is finished.
+ <P>
+
+<HR>
+To the homepage of <A HREF="http://www.iki.fi/a1bert/"><EM>a1bert@iki.fi</EM></A>
+</body>
+</html>
